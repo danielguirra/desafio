@@ -11,6 +11,7 @@ const sequelize = new Sequelize(dbName, dbUser, dbPassword, {
   dialect: "mysql",
   host: dbHost,
   port: 3306,
+  logging: false,
 });
 
 module.exports = { sequelize };

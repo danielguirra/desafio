@@ -1,13 +1,15 @@
 const express = require("express");
-const { Product } = require("./models/product");
-const { importXml } = require("./routes/import_xml");
-
+const { sequelize } = require("./database/connection");
+const { importXml } = require("./routes/product/import_xml");
+const { v1 } = require("./routes/product/routes_product");
 const app = express();
 
 app.use(importXml);
+app.use("/v1", v1);
+app.listen(3000, () => {
+  sequelize.sync().then(() => {
+    console.log("O Banco foi sincronizado");
+  });
 
-app.listen(3000, async () => {
-  await Product.sync();
-
-  console.log("ok");
+  console.log("API está rodando na porta 3000");
 });

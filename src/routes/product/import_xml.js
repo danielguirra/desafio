@@ -1,29 +1,49 @@
 const express = require("express");
 const xml2js = require("xml2js");
 const fs = require("fs");
-const { Product } = require("../models/product");
+const { Product } = require("../../models/product");
 const importXml = express.Router();
 
 importXml.use(express.text({ type: "application/xml" }));
 
 importXml.post("/xml", async (req, res) => {
-  const xml = await xml2js.parseStringPromise(req.body);
   try {
+    const xml = await xml2js.parseStringPromise(req.body);
+    if (!xml)
+      throw new Error("Não foi possivel identificar o corpo da requisição");
+    if (!xml.Products) throw new Error("O XML não possui Products");
+    if (!xml.Products.Product) throw new Error("O XML não possui Product");
     for (const key in xml.Products.Product) {
       if (Object.hasOwnProperty.call(xml.Products.Product, key)) {
-        const element = xml.Products.Product[key];
-
-        const save = await Product.create(organize(element)).save;
+        const unorganized_product = xml.Products.Product[key];
+        const organized_product = organizeProduct(unorganized_product);
+        const verify_duplicidade = await Product.findOne({
+          where: {
+            Product_ID: organized_product.Product_ID,
+          },
+        });
+        if (verify_duplicidade)
+          if (
+            verify_duplicidade.dataValues.Product_ID ==
+            organized_product.Product_ID
+          )
+            throw new Error(
+              "Ja existe o produto com ID " + organized_product.Product_ID
+            );
+        const save = await Product.create(organizeProduct(unorganized_product));
       }
     }
     return res.status(200).send("Dados XML processados com sucesso");
   } catch (error) {
-    return res.status(400).send(error.message);
+    return res.status(400).send({
+      errorCode: 400,
+      message: error.message,
+    });
   }
 });
 
 module.exports = { importXml };
-function organize(array) {
+function organizeProduct(array) {
   return {
     Product_ID: parseInt(array.Product_ID[0]),
     SKU: array.SKU[0],
